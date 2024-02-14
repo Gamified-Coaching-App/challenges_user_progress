@@ -1,4 +1,8 @@
-import { DynamoDB } from 'aws-sdk';
+// Import the entire AWS SDK package
+import aws from 'aws-sdk';
+
+// Destructure to get DynamoDB
+const { DynamoDB } = aws;
 
 const documentClient = new DynamoDB.DocumentClient();
 
