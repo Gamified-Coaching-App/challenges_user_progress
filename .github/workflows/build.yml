@@ -32,4 +32,4 @@ jobs:
           aws-region: eu-west-2
 
       - name: Deploy to AWS Lambda
-        run: aws lambda update-function-code --function-name arn:aws:lambda:eu-west-2:590183778243:function:challenge_user_progress_update --zip-file fileb://lambda.zip
+        run: aws lambda update-function-code --function-name arn:aws:lambda:eu-west-2:590183778243:function:challenges_user_progress_update --zip-file fileb://lambda.zip
