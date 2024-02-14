@@ -8,7 +8,7 @@ const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
   // Ensure event.detail is properly structured
-  if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
+  if (!event || typeof event.user_id === 'undefined' || typeof event.distance_in_meters === 'undefined') {
     console.error('Invalid event structure:', event);
     return {
       statusCode: 400,
@@ -16,7 +16,7 @@ export async function handler(event) {
     };
   }
 
-  const { user_id: userId, distance_in_meters: distance } = event.detail;
+  const { user_id: userId, distance_in_meters: distance } = event;
   const tableName = "challenges_user_enrollment";
 
   // Prepare query parameters to find challenges for the user
