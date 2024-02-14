@@ -1,50 +1,35 @@
+## Template to use for all Lambda function deployments. 
+## FILL IN FUCNTION ARN IN DEPLLOYMENT STEP!!
+
 name: Deploy Lambda Function
 
 on:
   push:
     branches:
       - main
-
+      
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      # Use an environment file to store AWS credentials securely
-      url: .github/workflows/aws-credentials.yml
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'  # Use a supported Node.js version
+          node-version: '20' 
 
-      - name: Install dependencies and build your Lambda function
+      - name: Install dependencies and package Lambda function
         run: |
           npm install
-          # Replace with your function's build command (if needed)
-          # Example: npm run build
-
-      - name: Pack the Lambda function into a ZIP file
-        run: |
           zip -r lambda.zip . -x '*.git*'
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
       - name: Deploy to AWS Lambda
-        run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.FUNCTION_NAME }} \
-            --zip-file fileb://lambda.zip
-
-# Separate workflow file for AWS credentials (example)
-.github/workflows/aws-credentials.yml
-name: Store AWS Credentials
-on:
-  workflow_dispatch:
-
-env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_REGION: eu-west-2 
-  FUNCTION_NAME: challenges_user_progress_update 
-
+        run: aws lambda update-function-code --function-name arn:aws:lambda:eu-west-2:590183778243:function:challenge_user_progress_update --zip-file fileb://lambda.zip
