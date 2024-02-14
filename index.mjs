@@ -1,56 +1,66 @@
-// Use destructuring to import only what you need from the SDK
 import { DynamoDB } from 'aws-sdk';
 
 const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
-    // what would trigger this?
-  const { user_id: userId, distance_in_meters: distance } = event.detail;
-
-  const tableName = "challenges_user_enrollment";
-  const params = {
-    TableName: tableName,
-    KeyConditionExpression: "#user_id = :user_id",
-    ExpressionAttributeNames: {
-      "#user_id": "user_id",
-    },
-    ExpressionAttributeValues: {
-      ":user_id": userId,
-    },
-  };
-
-  try {
-    const { Items: challenges } = await documentClient.query(params).promise();
-
-    await Promise.all(challenges.map(challenge => {
-      const updateParams = {
-        TableName: tableName,
-        Key: {
-          user_id: userId,
-          challenge_id: challenge.challenge_id,
-        },
-        UpdateExpression: "SET m_completed = m_completed + :distance",
-        ExpressionAttributeValues: {
-          ":distance": distance,
-        },
-      };
-
-      return documentClient.update(updateParams).promise();
-    }));
-
-    console.log(`Successfully updated m_completed for user ${userId} in ${challenges.length} challenges`);
-  } catch (error) {
-    console.error(`Error updating m_completed for user ${userId}:`, error);
-    // Enhanced error handling
+  // Ensure event.detail is properly structured
+  if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
+    console.error('Invalid event structure:', event);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error processing your request" }),
+      statusCode: 400,
+      body: JSON.stringify({ error: "Invalid event structure. Must include event.detail with user_id and distance_in_meters." }),
     };
   }
 
-  // Success response
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "m_completed updated successfully" }),
+  const { user_id: userId, distance_in_meters: distance } = event.detail;
+  const tableName = "challenges_user_enrollment";
+
+  // Prepare query parameters to find challenges for the user
+  const queryParams = {
+    TableName: tableName,
+    KeyConditionExpression: "#user_id = :user_id",
+    ExpressionAttributeNames: { "#user_id": "user_id" },
+    ExpressionAttributeValues: { ":user_id": userId },
   };
+
+  try {
+    const queryResult = await documentClient.query(queryParams).promise();
+    const challenges = queryResult.Items;
+
+    if (challenges.length === 0) {
+      console.log(`No challenges found for user ${userId}`);
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ message: "No challenges found for the user." }),
+      };
+    }
+
+    // Batch update challenges with new distance
+    const updatePromises = challenges.map(challenge => {
+      const updateParams = {
+        TableName: tableName,
+        Key: { user_id: userId, challenge_id: challenge.challenge_id },
+        UpdateExpression: "SET m_completed = m_completed + :distance",
+        ExpressionAttributeValues: { ":distance": distance },
+      };
+
+      return documentClient.update(updateParams).promise();
+    });
+
+    await Promise.all(updatePromises);
+    console.log(`Successfully updated m_completed for user ${userId} in ${challenges.length} challenges`);
+
+    // Return success response
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "m_completed updated successfully for all challenges." }),
+    };
+  } catch (error) {
+    console.error("Error updating challenges for user:", userId, error);
+    // Return error response
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }),
+    };
+  }
 }
