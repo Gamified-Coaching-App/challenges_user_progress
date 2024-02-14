@@ -21,6 +21,8 @@ jobs:
 
       - name: Install dependencies and package Lambda function
         run: |
+          echo $PWD
+          ls -l
           npm install
           zip -r lambda.zip . -x '*.git*'
 

@@ -1,7 +1,6 @@
 {
   "name": "challenges_user_progress_update",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,7 +8,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.285.0"
+    "aws-sdk": "^2.1557.0"
   },
-  "keywords": ["lambda", "aws", "challenges", "user progress"]
+  "keywords": [
+    "lambda",
+    "aws",
+    "challenges",
+    "user progress"
+  ],
+  "devDependencies": {},
+  "description": ""
 }
