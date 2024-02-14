@@ -4,6 +4,7 @@ import { DynamoDB } from 'aws-sdk';
 const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
+    // what would trigger this?
   const { user_id: userId, distance_in_meters: distance } = event.detail;
 
   const tableName = "challenges_user_enrollment";
