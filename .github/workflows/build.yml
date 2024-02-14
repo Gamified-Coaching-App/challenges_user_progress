@@ -14,7 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      # Optional: Print working directory and list contents
       - name: Check working directory
         run: |
           echo "Current working directory:"
