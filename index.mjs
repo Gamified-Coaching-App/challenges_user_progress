@@ -45,6 +45,7 @@ export async function handler(event) {
     const updatePromises = challenges.map(async (challenge) => {
       const newMCompleted = challenge.m_completed + distance;
       let updateExpression = "SET m_completed = :m_completed";
+      let expressionAttributeNames = {};
       const expressionAttributeValues = {
         ":m_completed": newMCompleted,
       };
@@ -53,17 +54,20 @@ export async function handler(event) {
       if (newMCompleted >= challenge.m_target) {
         updateExpression += ", #status = :newStatus";
         expressionAttributeValues[":newStatus"] = "completed";
+        expressionAttributeNames = { "#status": "status" }; // Only include if updating status
       }
 
       const updateParams = {
         TableName: tableName,
         Key: { user_id: userId, challenge_id: challenge.challenge_id },
         UpdateExpression: updateExpression,
-        ExpressionAttributeNames: {
-          "#status": "status"
-        },
         ExpressionAttributeValues: expressionAttributeValues,
       };
+
+      // Only add ExpressionAttributeNames to the params if it's not empty
+      if (Object.keys(expressionAttributeNames).length > 0) {
+        updateParams.ExpressionAttributeNames = expressionAttributeNames;
+      }
 
       return documentClient.update(updateParams).promise();
     });
