@@ -13,17 +13,14 @@ export async function handler(event) {
   }
 
   const { user_id: userId, distance_in_meters: distance } = event.detail;
+  const numericDistance = Number(distance_in_meters); // Ensure distance is a number
   const enrollmentTableName = "challenges_user_enrollment";
-  const challengesTableName = "challenges";
-
-  // Ensure distance is a number
-  const numericDistance = Number(distance);
 
   // Query parameters to find active challenges for the user
   const queryParams = {
     TableName: enrollmentTableName,
-    KeyConditionExpression: "#user_id = :user_id",
-    FilterExpression: "#status = :status",
+    IndexName: "StatusIndex", // Assuming there's a GSI for status, if not, adjust accordingly.
+    KeyConditionExpression: "#user_id = :user_id and #status = :status",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
       "#status": "status"
@@ -36,65 +33,32 @@ export async function handler(event) {
 
   try {
     const queryResult = await documentClient.query(queryParams).promise();
-    const enrollments = queryResult.Items;
+    const activeEnrollments = queryResult.Items;
 
-    if (enrollments.length === 0) {
+    if (activeEnrollments.length === 0) {
       console.log(`No active challenges found for user ${userId}`);
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ message: "No active challenges found for the user." }),
-      };
+      return { statusCode: 404, body: JSON.stringify({ message: "No active challenges found for the user." }) };
     }
 
-    const updatePromises = enrollments.map(async (enrollment) => {
-      // Assuming challenge_id is a string and used as a sort key
-      const challengeId = String(enrollment.challenge_id);
+    for (let enrollment of activeEnrollments) {
+      console.log(`Processing enrollment: ${enrollment.challenge_id} for user: ${userId}`);
 
-      // Get the challenge details to find out the m_target
-      const challengeData = await documentClient.get({
-        TableName: challengesTableName,
-        Key: { "challenge_id": challengeId }
-      }).promise();
-
-      const m_target = challengeData.Item ? challengeData.Item.m_target : null;
-      if (m_target === null) {
-        throw new Error(`Challenge with ID ${challengeId} not found.`);
-      }
-
-      const newMCompleted = enrollment.m_completed + numericDistance;
-      let updateExpression = "SET m_completed = :m_completed";
-      const expressionAttributeValues = { ":m_completed": newMCompleted };
-      let expressionAttributeNames = {};
-
-      // Check if the challenge is completed
-      if (newMCompleted >= m_target) {
-        updateExpression += ", #status = :newStatus";
-        expressionAttributeNames["#status"] = "status";
-        expressionAttributeValues[":newStatus"] = "completed";
-      }
-
-      // Update the challenge enrollment with the new meters completed and potentially new status
-      await documentClient.update({
+      // Update m_completed directly with added distance
+      const updateParams = {
         TableName: enrollmentTableName,
-        Key: { "user_id": userId, "challenge_id": challengeId },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeValues: expressionAttributeValues,
-        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames })
-      }).promise();
-    });
+        Key: { "user_id": userId, "challenge_id": enrollment.challenge_id },
+        UpdateExpression: "SET m_completed = m_completed + :distance",
+        ExpressionAttributeValues: { ":distance": numericDistance },
+      };
 
-    await Promise.allSettled(updatePromises);
+      await documentClient.update(updateParams).promise();
+      console.log(`Updated m_completed for challenge: ${enrollment.challenge_id} for user: ${userId}`);
+    }
+
     console.log(`Successfully processed challenges for user ${userId}`);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "Challenges processed successfully." }),
-    };
+    return { statusCode: 200, body: JSON.stringify({ message: "Challenges processed successfully." }) };
   } catch (error) {
     console.error("Error processing challenges for user:", userId, error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Failed to process challenges due to an internal error." }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: "Failed to process challenges due to an internal error." }) };
   }
 }
