@@ -13,11 +13,12 @@ export async function handler(event) {
   }
 
   const { user_id: userId, distance_in_meters: distance } = event.detail;
-  const tableName = "challenges_user_enrollment";
+  const enrollmentTableName = "challenges_user_enrollment";
+  const challengesTableName = "challenges";
 
   // Query parameters to find active challenges for the user
   const queryParams = {
-    TableName: tableName,
+    TableName: enrollmentTableName,
     KeyConditionExpression: "#user_id = :user_id",
     FilterExpression: "#status = :status",
     ExpressionAttributeNames: {
@@ -32,9 +33,9 @@ export async function handler(event) {
 
   try {
     const queryResult = await documentClient.query(queryParams).promise();
-    const challenges = queryResult.Items;
+    const enrollments = queryResult.Items;
 
-    if (challenges.length === 0) {
+    if (enrollments.length === 0) {
       console.log(`No active challenges found for user ${userId}`);
       return {
         statusCode: 404,
@@ -42,8 +43,22 @@ export async function handler(event) {
       };
     }
 
-    const updatePromises = challenges.map(async (challenge) => {
-      const newMCompleted = challenge.m_completed + distance;
+    const updatePromises = enrollments.map(async (enrollment) => {
+      // Get the m_target from the challenges table
+      const getChallengeParams = {
+        TableName: challengesTableName,
+        Key: {
+          "challenge_id": enrollment.challenge_id
+        }
+      };
+
+      const challenge = await documentClient.get(getChallengeParams).promise();
+      if (!challenge || !challenge.Item) {
+        throw new Error(`Challenge with ID ${enrollment.challenge_id} not found.`);
+      }
+
+      const { m_target } = challenge.Item;
+      const newMCompleted = enrollment.m_completed + distance;
       let updateExpression = "SET m_completed = :m_completed";
       let expressionAttributeNames = {};
       const expressionAttributeValues = {
@@ -51,15 +66,15 @@ export async function handler(event) {
       };
 
       // Check if the challenge is completed
-      if (newMCompleted >= challenge.m_target) {
+      if (newMCompleted >= m_target) {
         updateExpression += ", #status = :newStatus";
         expressionAttributeValues[":newStatus"] = "completed";
         expressionAttributeNames = { "#status": "status" }; // Only include if updating status
       }
 
       const updateParams = {
-        TableName: tableName,
-        Key: { user_id: userId, challenge_id: challenge.challenge_id },
+        TableName: enrollmentTableName,
+        Key: { user_id: userId, challenge_id: enrollment.challenge_id },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionAttributeValues,
       };
