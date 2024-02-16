@@ -4,6 +4,7 @@ const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
+  // Validate the event structure
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
     console.error('Invalid event structure:', event);
     return {
@@ -12,14 +13,19 @@ export async function handler(event) {
     };
   }
 
+  // Extract necessary details from the event
   const { user_id: userId, distance_in_meters: distance } = event.detail;
-  const numericDistance = Number(distance_in_meters); // Ensure distance is a number
+  
+  // Ensure distance is correctly typed as a number
+  const numericDistance = Number(distance);
+
+  // Define the table name where user enrollments are stored
   const enrollmentTableName = "challenges_user_enrollment";
 
-  // Query parameters to find active challenges for the user
+  // Prepare query parameters to find active challenges for the user
   const queryParams = {
     TableName: enrollmentTableName,
-    IndexName: "StatusIndex", // Assuming there's a GSI for status, if not, adjust accordingly.
+    IndexName: "UserStatusIndex", // Assuming an index for querying by user and status
     KeyConditionExpression: "#user_id = :user_id and #status = :status",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
@@ -32,6 +38,7 @@ export async function handler(event) {
   };
 
   try {
+    // Query the user's active challenge enrollments
     const queryResult = await documentClient.query(queryParams).promise();
     const activeEnrollments = queryResult.Items;
 
@@ -40,25 +47,29 @@ export async function handler(event) {
       return { statusCode: 404, body: JSON.stringify({ message: "No active challenges found for the user." }) };
     }
 
-    for (let enrollment of activeEnrollments) {
-      console.log(`Processing enrollment: ${enrollment.challenge_id} for user: ${userId}`);
-
-      // Update m_completed directly with added distance
+    // Iterate through active enrollments to update them
+    const updatePromises = activeEnrollments.map(enrollment => {
       const updateParams = {
         TableName: enrollmentTableName,
         Key: { "user_id": userId, "challenge_id": enrollment.challenge_id },
         UpdateExpression: "SET m_completed = m_completed + :distance",
-        ExpressionAttributeValues: { ":distance": numericDistance },
+        ExpressionAttributeValues: {
+          ":distance": numericDistance,
+        },
       };
 
-      await documentClient.update(updateParams).promise();
-      console.log(`Updated m_completed for challenge: ${enrollment.challenge_id} for user: ${userId}`);
-    }
+      return documentClient.update(updateParams).promise();
+    });
 
-    console.log(`Successfully processed challenges for user ${userId}`);
-    return { statusCode: 200, body: JSON.stringify({ message: "Challenges processed successfully." }) };
+    // Wait for all updates to complete
+    await Promise.allSettled(updatePromises);
+    console.log(`Successfully updated challenges for user ${userId}`);
+
+    // Return success response
+    return { statusCode: 200, body: JSON.stringify({ message: "Challenges updated successfully." }) };
   } catch (error) {
-    console.error("Error processing challenges for user:", userId, error);
-    return { statusCode: 500, body: JSON.stringify({ error: "Failed to process challenges due to an internal error." }) };
+    // Log and return error response
+    console.error("Error updating challenges for user:", userId, error);
+    return { statusCode: 500, body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }) };
   }
 }
