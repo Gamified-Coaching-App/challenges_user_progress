@@ -4,6 +4,7 @@ const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
+  // Validate the event structure
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
     console.error('Invalid event structure:', event);
     return {
@@ -12,16 +13,14 @@ export async function handler(event) {
     };
   }
 
-  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime, activity_type: type } = event.detail;
+  // Extract required details from the event
+  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime } = event.detail;
   const tableName = "challenges";
 
-  // only query challenges that cover the workout time
-  let filterExpression = "#status = :currentStatus  AND #user_id = :userIdValue";
-  filterExpression += " AND #start_date <= :workoutTime AND #end_date >= :workoutTime";
-
-  // Query parameters to find active challenges for the user
+  // Define query parameters to find active challenges for the user
   const queryParams = {
     TableName: tableName,
+    FilterExpression: "#status = :currentStatus AND #user_id = :userIdValue AND #start_date <= :workoutTime AND #end_date >= :workoutTime",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
       "#status": "status",
@@ -31,16 +30,16 @@ export async function handler(event) {
     ExpressionAttributeValues: {
       ":currentStatus": "current",
       ":userIdValue": userId,
-      ":workoutTime": workoutTime 
+      ":workoutTime": workoutTime
     },
   };
 
   try {
-    // Query Execution and Processing Results
+    // Execute the query to find active challenges
     const queryResult = await documentClient.query(queryParams).promise();
     const challenges = queryResult.Items;
-    
-    // Check for No Results
+
+    // Handle case with no current challenges found
     if (challenges.length === 0) {
       console.log(`No current challenges found for user ${userId}`);
       return {
@@ -49,47 +48,35 @@ export async function handler(event) {
       };
     }
 
-    // Update Challenges
+    // Iterate over challenges to update them
     for (const challenge of challenges) {
       const newMCompleted = challenge.completed_meters + distance;
-      const isChallengeCompleted = newMCompleted >= challenge.target_meters;
-      const newStatus = isChallengeCompleted ? "completed" : "current";
-    
-      // Simplified Update Expression
-      let updateExpression = "SET completed_meters = completed_meters + :distance, #status = :newStatus";
-    
-      const expressionAttributeValues = {
-        ":distance": distance,
-        ":newStatus": newStatus,
-      };
-    
-      // Now, we always use the #status, so we can define this outside of any condition
-      const expressionAttributeNames = {
-        "#status": "status", // Necessary for reserved words
-      };
-    
+      const newStatus = newMCompleted >= challenge.target_meters ? "completed" : "current";
+
       const updateParams = {
         TableName: tableName,
         Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeValues: expressionAttributeValues,
-        ExpressionAttributeNames: expressionAttributeNames,
+        UpdateExpression: "SET completed_meters = :newMCompleted, #status = :newStatus",
+        ExpressionAttributeValues: {
+          ":newMCompleted": newMCompleted,
+          ":newStatus": newStatus,
+        },
+        ExpressionAttributeNames: {
+          "#status": "status",
+        },
       };
-    
+
+      // Execute update operation
       await documentClient.update(updateParams).promise();
     }
-    
-    
-    console.log(`Successfully updated challenges for user ${userId}`);
 
-    // Success response
+    console.log(`Successfully updated challenges for user ${userId}`);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Challenges updated successfully." }),
     };
   } catch (error) {
     console.error("Error updating challenges for user:", userId, error);
-    // Error response
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }),
