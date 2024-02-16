@@ -16,7 +16,7 @@ export async function handler(event) {
   const tableName = "challenges";
 
   // only query challenges that cover the workout time
-  let filterExpression = "(#status = :activeStatus OR #status = :expiredStatus)";
+  let filterExpression = "#status = :currentStatus";
   filterExpression += " AND #user_id = :userIdValue AND #start_date <= :workoutTime AND #end_date >= :workoutTime";
 
   // Query parameters to find active challenges for the user
@@ -29,8 +29,7 @@ export async function handler(event) {
       "#end_date": "end_date"
     },
     ExpressionAttributeValues: {
-      ":activeStatus": "active",
-      ":expiredStatus": "expired",
+      ":currentStatus": "current",
       ":userIdValue": userId,
       ":workoutTime": workoutTime // Using the workoutTime from the event
     },
@@ -43,10 +42,10 @@ export async function handler(event) {
     
     // Check for No Results
     if (challenges.length === 0) {
-      console.log(`No active challenges found for user ${userId}`);
+      console.log(`No current challenges found for user ${userId}`);
       return {
         statusCode: 404,
-        body: JSON.stringify({ message: "No active challenges found for the user." }),
+        body: JSON.stringify({ message: "No current challenges found for the user." }),
       };
     }
 
