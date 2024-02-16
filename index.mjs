@@ -53,28 +53,28 @@ export async function handler(event) {
     const updatePromises = challenges.map(async (challenge) => {
       const newMCompleted = challenge.completed_meters + distance;
       let updateExpression = "SET completed_meters = :newMCompleted";
-      let expressionAttributeNames = {};
       const expressionAttributeValues = {
         ":newMCompleted": newMCompleted,
       };
     
-      if (newMCompleted >= challenge.target_meters) {
-        updateExpression += ", #status = :newStatus";
-        expressionAttributeValues[":newStatus"] = "completed";
-        expressionAttributeNames["#status"] = "status";
-      }
-    
-      const updateParams = {
+      let updateParams = {
         TableName: tableName,
         Key: { user_id: userId, challenge_id: challenge.challenge_id },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionAttributeValues,
-        // Conditionally add ExpressionAttributeNames
-        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames }),
       };
+    
+      // Check if the challenge is completed and update status if necessary
+      if (newMCompleted >= challenge.target_meters) {
+        updateExpression += ", #status = :newStatus";
+        updateParams.ExpressionAttributeValues[":newStatus"] = "completed";
+        updateParams.ExpressionAttributeNames = { "#status": "status" }; // Add this only if updating status
+        updateParams.UpdateExpression = updateExpression; // Ensure updated expression is reassigned
+      }
     
       return documentClient.update(updateParams).promise();
     });
+    
 
     await Promise.all(updatePromises);
     console.log(`Successfully updated challenges for user ${userId}`);
