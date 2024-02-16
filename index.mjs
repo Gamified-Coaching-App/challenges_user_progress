@@ -61,7 +61,7 @@ export async function handler(event) {
         throw new Error(`Challenge with ID ${challengeId} not found.`);
       }
 
-      const newMCompleted = (enrollment.m_completed || 0) + numericDistance;
+      const newMCompleted = enrollment.m_completed + numericDistance;
       let updateExpression = "SET m_completed = :m_completed";
       const expressionAttributeValues = { ":m_completed": newMCompleted };
       let expressionAttributeNames = {};
