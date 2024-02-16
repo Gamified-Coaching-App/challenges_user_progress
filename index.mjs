@@ -12,28 +12,36 @@ export async function handler(event) {
     };
   }
 
-  const { user_id: userId, distance_in_meters: distance } = event.detail;
+  const { user_id: userId, distance_in_meters: distance, timestamp_local = workoutTime, activity_type: type } = event.detail;
   const tableName = "challenges";
+
+  // only query challenges that cover the workout time
+  let filterExpression = "(#status = :activeStatus OR #status = :expiredStatus)";
+  filterExpression += " AND #user_id = :userIdValue AND #start_date <= :workoutTime AND #end_date >= :workoutTime";
 
   // Query parameters to find active challenges for the user
   const queryParams = {
     TableName: tableName,
-    KeyConditionExpression: "#user_id = :user_id",
-    FilterExpression: "#status = :status",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
-      "#status": "status"
+      "#status": "status",
+      "#start_date": "start_date",
+      "#end_date": "end_date"
     },
     ExpressionAttributeValues: {
-      ":user_id": userId,
-      ":status": "active"
+      ":activeStatus": "active",
+      ":expiredStatus": "expired",
+      ":userIdValue": userId,
+      ":workoutTime": workoutTime // Using the workoutTime from the event
     },
   };
 
   try {
+    // Query Execution and Processing Results
     const queryResult = await documentClient.query(queryParams).promise();
     const challenges = queryResult.Items;
-
+    
+    // Check for No Results
     if (challenges.length === 0) {
       console.log(`No active challenges found for user ${userId}`);
       return {
@@ -42,9 +50,13 @@ export async function handler(event) {
       };
     }
 
+    // Update Challenges
     const updatePromises = challenges.map(async (challenge) => {
+      // calcualte the new 
       const newMCompleted = challenge.completed_meters + distance;
+      // dynomoDB update expression
       let updateExpression = "SET completed_meters = :completed_meters";
+      // initialise but populate only if the challenge is completed
       let expressionAttributeNames = {};
       const expressionAttributeValues = {
         ":completed_meters": newMCompleted,
@@ -52,6 +64,7 @@ export async function handler(event) {
 
       // Check if the challenge is completed
       if (newMCompleted >= challenge.target_meters) {
+        // update the status
         updateExpression += ", #status = :newStatus";
         expressionAttributeValues[":newStatus"] = "completed";
         expressionAttributeNames = { "#status": "status" }; // Only include if updating status
