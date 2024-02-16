@@ -14,13 +14,14 @@ export async function handler(event) {
 
   const { user_id: userId, distance_in_meters: distance } = event.detail;
   const numericDistance = Number(distance);
-  const challengesTableName = "challenges";
+  const challengesTableName = "challenges"; // Update this if the table name has changed
 
   try {
-    // Directly use a scan as a fallback if querying without an index. Note: This is not efficient for large datasets.
+    // Since you're no longer using an index, remove IndexName from query parameters if it was there before
     const scanParams = {
       TableName: challengesTableName,
-      FilterExpression: "#user_id = :user_id and #status = :status",
+      // Assuming you have a GSI or LSI on user_id if you're filtering with it; otherwise, you may need to use a Scan operation
+      KeyConditionExpression: "#user_id = :user_id and #status = :status",
       ExpressionAttributeNames: {
         "#user_id": "user_id",
         "#status": "status"
@@ -40,9 +41,11 @@ export async function handler(event) {
     }
 
     for (let challenge of activeChallenges) {
+      // Make sure to convert challenge.challenge_id to a number if it's stored as a string in DynamoDB
+      const challengeId = Number(challenge.challenge_id);
       const updateParams = {
         TableName: challengesTableName,
-        Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
+        Key: { "user_id": userId, "challenge_id": challengeId }, // Ensure challenge_id is a number
         UpdateExpression: "SET m_completed = m_completed + :distance",
         ExpressionAttributeValues: {
           ":distance": numericDistance,
