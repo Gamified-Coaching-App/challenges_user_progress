@@ -16,8 +16,8 @@ export async function handler(event) {
   const tableName = "challenges";
 
   // only query challenges that cover the workout time
-  let filterExpression = "#status = :currentStatus";
-  filterExpression += " AND #user_id = :userIdValue AND #start_date <= :workoutTime AND #end_date >= :workoutTime";
+  let filterExpression = "#status = :currentStatus  AND #user_id = :userIdValue";
+  filterExpression += " AND #start_date <= :workoutTime AND #end_date >= :workoutTime";
 
   // Query parameters to find active challenges for the user
   const queryParams = {
@@ -31,7 +31,7 @@ export async function handler(event) {
     ExpressionAttributeValues: {
       ":currentStatus": "current",
       ":userIdValue": userId,
-      ":workoutTime": workoutTime // Using the workoutTime from the event
+      ":workoutTime": workoutTime 
     },
   };
 
@@ -51,36 +51,28 @@ export async function handler(event) {
 
     // Update Challenges
     const updatePromises = challenges.map(async (challenge) => {
-      // calcualte the new 
       const newMCompleted = challenge.completed_meters + distance;
-      // dynomoDB update expression
-      let updateExpression = "SET completed_meters = :completed_meters";
-      // initialise but populate only if the challenge is completed
+      let updateExpression = "SET completed_meters = :newMCompleted";
       let expressionAttributeNames = {};
       const expressionAttributeValues = {
-        ":completed_meters": newMCompleted,
+        ":newMCompleted": newMCompleted,
       };
-
-      // Check if the challenge is completed
+    
       if (newMCompleted >= challenge.target_meters) {
-        // update the status
         updateExpression += ", #status = :newStatus";
         expressionAttributeValues[":newStatus"] = "completed";
-        expressionAttributeNames = { "#status": "status" }; // Only include if updating status
+        expressionAttributeNames["#status"] = "status";
       }
-
+    
       const updateParams = {
         TableName: tableName,
         Key: { user_id: userId, challenge_id: challenge.challenge_id },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionAttributeValues,
+        // Conditionally add ExpressionAttributeNames
+        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames }),
       };
-
-      // Only add ExpressionAttributeNames to the params if it's not empty
-      if (Object.keys(expressionAttributeNames).length > 0) {
-        updateParams.ExpressionAttributeNames = expressionAttributeNames;
-      }
-
+    
       return documentClient.update(updateParams).promise();
     });
 
