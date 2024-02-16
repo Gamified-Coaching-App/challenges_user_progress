@@ -14,12 +14,12 @@ export async function handler(event) {
 
   const { user_id: userId, distance_in_meters: distance } = event.detail;
   const numericDistance = Number(distance);
-  const enrollmentTableName = "challenges_user_enrollment";
+  const challengesTableName = "challenges";
 
   try {
     // Directly use a scan as a fallback if querying without an index. Note: This is not efficient for large datasets.
     const scanParams = {
-      TableName: enrollmentTableName,
+      TableName: challengesTableName,
       FilterExpression: "#user_id = :user_id and #status = :status",
       ExpressionAttributeNames: {
         "#user_id": "user_id",
@@ -32,17 +32,17 @@ export async function handler(event) {
     };
 
     const scanResult = await documentClient.scan(scanParams).promise();
-    const activeEnrollments = scanResult.Items;
+    const activeChallenges = scanResult.Items;
 
-    if (activeEnrollments.length === 0) {
+    if (activeChallenges.length === 0) {
       console.log(`No active challenges found for user ${userId}`);
       return { statusCode: 404, body: JSON.stringify({ message: "No active challenges found for the user." }) };
     }
 
-    for (let enrollment of activeEnrollments) {
+    for (let challenge of activeChallenges) {
       const updateParams = {
-        TableName: enrollmentTableName,
-        Key: { "user_id": userId, "challenge_id": enrollment.challenge_id },
+        TableName: challengesTableName,
+        Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
         UpdateExpression: "SET m_completed = m_completed + :distance",
         ExpressionAttributeValues: {
           ":distance": numericDistance,
