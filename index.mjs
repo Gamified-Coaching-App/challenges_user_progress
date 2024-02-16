@@ -50,33 +50,31 @@ export async function handler(event) {
     }
 
     // Update Challenges
-    const updatePromises = challenges.map(async (challenge) => {
+    for (const challenge of challenges) {
       const newMCompleted = challenge.completed_meters + distance;
-      let updateExpression = "SET completed_meters = :newMCompleted";
+      let updateExpression = "SET completed_meters = completed_meters + :distance";
       const expressionAttributeValues = {
-        ":newMCompleted": newMCompleted,
+        ":distance": distance,
       };
-    
-      let updateParams = {
-        TableName: tableName,
-        Key: { user_id: userId, challenge_id: challenge.challenge_id },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeValues: expressionAttributeValues,
-      };
-    
-      // Check if the challenge is completed and update status if necessary
+      let expressionAttributeNames = {};
+
       if (newMCompleted >= challenge.target_meters) {
         updateExpression += ", #status = :newStatus";
-        updateParams.ExpressionAttributeValues[":newStatus"] = "completed";
-        updateParams.ExpressionAttributeNames = { "#status": "status" }; // Add this only if updating status
-        updateParams.UpdateExpression = updateExpression; // Ensure updated expression is reassigned
+        expressionAttributeValues[":newStatus"] = "completed";
+        expressionAttributeNames["#status"] = "status"; // Necessary for reserved words
       }
-    
-      return documentClient.update(updateParams).promise();
-    });
-    
 
-    await Promise.all(updatePromises);
+      const updateParams = {
+        TableName: tableName,
+        Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames }),
+      };
+
+      await documentClient.update(updateParams).promise();
+    }
+    
     console.log(`Successfully updated challenges for user ${userId}`);
 
     // Success response
