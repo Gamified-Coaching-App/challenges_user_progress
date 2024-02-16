@@ -12,7 +12,7 @@ export async function handler(event) {
     };
   }
 
-  const { user_id: userId, distance_in_meters: distance, timestamp_local = workoutTime, activity_type: type } = event.detail;
+  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime, activity_type: type } = event.detail;
   const tableName = "challenges";
 
   // only query challenges that cover the workout time
