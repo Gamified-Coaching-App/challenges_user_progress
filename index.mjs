@@ -16,6 +16,9 @@ export async function handler(event) {
   const enrollmentTableName = "challenges_user_enrollment";
   const challengesTableName = "challenges";
 
+  // Ensure distance is a number
+  const numericDistance = Number(distance);
+
   // Query parameters to find active challenges for the user
   const queryParams = {
     TableName: enrollmentTableName,
@@ -44,63 +47,54 @@ export async function handler(event) {
     }
 
     const updatePromises = enrollments.map(async (enrollment) => {
-      // Get the m_target from the challenges table
-      const getChallengeParams = {
-        TableName: challengesTableName,
-        Key: {
-          "challenge_id": enrollment.challenge_id
-        }
-      };
+      // Assuming challenge_id is a string and used as a sort key
+      const challengeId = String(enrollment.challenge_id);
 
-      const challengeResponse = await documentClient.get(getChallengeParams).promise();
-      if (!challengeResponse || !challengeResponse.Item) {
-        throw new Error(`Challenge with ID ${enrollment.challenge_id} not found.`);
+      // Get the challenge details to find out the m_target
+      const challengeData = await documentClient.get({
+        TableName: challengesTableName,
+        Key: { "challenge_id": challengeId }
+      }).promise();
+
+      const m_target = challengeData.Item ? challengeData.Item.m_target : null;
+      if (m_target === null) {
+        throw new Error(`Challenge with ID ${challengeId} not found.`);
       }
 
-      const m_target = challengeResponse.Item.m_target; // Now safely extracted
-      const newMCompleted = enrollment.m_completed + distance;
+      const newMCompleted = (enrollment.m_completed || 0) + numericDistance;
       let updateExpression = "SET m_completed = :m_completed";
+      const expressionAttributeValues = { ":m_completed": newMCompleted };
       let expressionAttributeNames = {};
-      const expressionAttributeValues = {
-        ":m_completed": newMCompleted,
-      };
 
       // Check if the challenge is completed
       if (newMCompleted >= m_target) {
         updateExpression += ", #status = :newStatus";
+        expressionAttributeNames["#status"] = "status";
         expressionAttributeValues[":newStatus"] = "completed";
-        expressionAttributeNames = { "#status": "status" }; // Only include if updating status
       }
 
-      const updateParams = {
+      // Update the challenge enrollment with the new meters completed and potentially new status
+      await documentClient.update({
         TableName: enrollmentTableName,
-        Key: { user_id: userId, challenge_id: enrollment.challenge_id },
+        Key: { "user_id": userId, "challenge_id": challengeId },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionAttributeValues,
-      };
-
-      // Only add ExpressionAttributeNames to the params if it's not empty
-      if (Object.keys(expressionAttributeNames).length > 0) {
-        updateParams.ExpressionAttributeNames = expressionAttributeNames;
-      }
-
-      return documentClient.update(updateParams).promise();
+        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames })
+      }).promise();
     });
 
-    await Promise.all(updatePromises);
-    console.log(`Successfully updated challenges for user ${userId}`);
+    await Promise.allSettled(updatePromises);
+    console.log(`Successfully processed challenges for user ${userId}`);
 
-    // Success response
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Challenges updated successfully." }),
+      body: JSON.stringify({ message: "Challenges processed successfully." }),
     };
   } catch (error) {
-    console.error("Error updating challenges for user:", userId, error);
-    // Error response
+    console.error("Error processing challenges for user:", userId, error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }),
+      body: JSON.stringify({ error: "Failed to process challenges due to an internal error." }),
     };
   }
 }
