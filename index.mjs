@@ -20,17 +20,19 @@ export async function handler(event) {
   // Define query parameters to find active challenges for the user
   const queryParams = {
     TableName: tableName,
-    KeyConditionExpression: "#user_id = :userIdValue and #dateAttribute BETWEEN :startDate AND :endDate",
+    KeyConditionExpression: "#user_id = :userIdValue",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
+      "#status": "status",
+      "#start_date": "start_date",
+      "#end_date": "end_date"
     },
     ExpressionAttributeValues: {
       ":userIdValue": userId,
-      ":startDate": workoutTime, 
-      ":endDate": workoutTime,
+      ":currentStatus": "current",
+      ":workoutTime": workoutTime // Assuming workoutTime is a timestamp or date
     },
-    // FilterExpression can still be used to further filter results based on non-key attributes
-    FilterExpression: "#status = :currentStatus",
+    FilterExpression: "#status = :currentStatus AND #start_date <= :workoutTime AND #end_date >= :workoutTime",
   };
 
   try {
