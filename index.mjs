@@ -52,12 +52,12 @@ export async function handler(event) {
         }
       };
 
-      const challenge = await documentClient.get(getChallengeParams).promise();
-      if (!challenge || !challenge.Item) {
+      const challengeResponse = await documentClient.get(getChallengeParams).promise();
+      if (!challengeResponse || !challengeResponse.Item) {
         throw new Error(`Challenge with ID ${enrollment.challenge_id} not found.`);
       }
 
-      const { m_target } = challenge.Item;
+      const m_target = challengeResponse.Item.m_target; // Now safely extracted
       const newMCompleted = enrollment.m_completed + distance;
       let updateExpression = "SET m_completed = :m_completed";
       let expressionAttributeNames = {};
