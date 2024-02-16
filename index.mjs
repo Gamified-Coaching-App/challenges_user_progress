@@ -52,28 +52,33 @@ export async function handler(event) {
     // Update Challenges
     for (const challenge of challenges) {
       const newMCompleted = challenge.completed_meters + distance;
-      let updateExpression = "SET completed_meters = completed_meters + :distance";
+      const isChallengeCompleted = newMCompleted >= challenge.target_meters;
+      const newStatus = isChallengeCompleted ? "completed" : "current";
+    
+      // Simplified Update Expression
+      let updateExpression = "SET completed_meters = completed_meters + :distance, #status = :newStatus";
+    
       const expressionAttributeValues = {
         ":distance": distance,
+        ":newStatus": newStatus,
       };
-      let expressionAttributeNames = {};
-
-      if (newMCompleted >= challenge.target_meters) {
-        updateExpression += ", #status = :newStatus";
-        expressionAttributeValues[":newStatus"] = "completed";
-        expressionAttributeNames["#status"] = "status"; // Necessary for reserved words
-      }
-
+    
+      // Now, we always use the #status, so we can define this outside of any condition
+      const expressionAttributeNames = {
+        "#status": "status", // Necessary for reserved words
+      };
+    
       const updateParams = {
         TableName: tableName,
         Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionAttributeValues,
-        ...(Object.keys(expressionAttributeNames).length > 0 && { ExpressionAttributeNames: expressionAttributeNames }),
+        ExpressionAttributeNames: expressionAttributeNames,
       };
-
+    
       await documentClient.update(updateParams).promise();
     }
+    
     
     console.log(`Successfully updated challenges for user ${userId}`);
 
