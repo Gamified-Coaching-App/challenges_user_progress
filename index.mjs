@@ -14,23 +14,35 @@ export async function handler(event) {
   }
 
   // Extract required details from the event
-  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime } = event.detail;
+  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime, activity_type: activityType } = event.detail;
+
+  if (activityType !== "RUNNING") {
+    // Handle the case where the activity_type is not RUNNING, 
+    // such as skipping the operation, logging a message, or returning a specific response
+    console.log("The activity type is not RUNNING. Skipping...");
+    return {
+      statusCode: 200, // Or another appropriate status code
+      body: JSON.stringify({ message: "No operation performed as the activity type is not RUNNING." }),
+    };
+  }
+
   const tableName = "challenges";
 
   // Define query parameters to find active challenges for the user
   const queryParams = {
     TableName: tableName,
+    // can only be used with the table's primary key attributes
     KeyConditionExpression: "#user_id = :userIdValue",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
       "#status": "status",
       "#start_date": "start_date",
-      "#end_date": "end_date"
+      "#end_date": "end_date",
     },
     ExpressionAttributeValues: {
       ":userIdValue": userId,
       ":currentStatus": "current",
-      ":workoutTime": workoutTime // Assuming workoutTime is a timestamp or date
+      ":workoutTime": workoutTime, // Assuming workoutTime is a timestamp or date
     },
     FilterExpression: "#status = :currentStatus AND #start_date <= :workoutTime AND #end_date >= :workoutTime",
   };
