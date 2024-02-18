@@ -80,7 +80,7 @@ export async function handler(event) {
             Message: JSON.stringify({
                 default: JSON.stringify(completionData),
             }),
-            TopicArn: 'arn:aws:sns:region:account-id:ChallengeCompletionNotification',
+            TopicArn: 'arn:aws:sns:eu-west-2:590183778243:ChallengeCompletionNotification',
             MessageStructure: 'json', 
         };
     
