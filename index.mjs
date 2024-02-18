@@ -84,8 +84,12 @@ export async function handler(event) {
             MessageStructure: 'json', 
         };
     
-        await sns.publish(message).promise();
-        console.log("Published completion message to SNS topic:", message);
+        try {
+          await sns.publish(message).promise();
+          console.log("Message published to SNS topic successfully.");
+        } catch (error) {
+          console.error("Error publishing message to SNS topic:", error);
+        }
       }
 
       const updateParams = {
