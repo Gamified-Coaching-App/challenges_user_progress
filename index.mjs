@@ -64,7 +64,28 @@ export async function handler(event) {
     // Iterate over challenges to update them
     for (const challenge of challenges) {
       const newMCompleted = challenge.completed_meters + distance;
-      const newStatus = newMCompleted >= challenge.target_meters ? "completed" : "current";
+      const isCompleted = newMCompleted >= challenge.target_meters;
+      const newStatus = isCompleted ? "completed" : "current";
+
+      if (isCompleted) {
+        const completionData = {
+            userId: userId, // ID of the user who completed the challenge
+            pointsEarned: challenge.points, // Points earned from completing the challenge
+            newStatus: "completed" // Status of the challenge
+        };
+    
+        // SNS messages
+        const message = {
+            Message: JSON.stringify({
+                default: JSON.stringify(completionData),
+            }),
+            TopicArn: 'arn:aws:sns:region:account-id:ChallengeCompletionNotification',
+            MessageStructure: 'json', 
+        };
+    
+        await sns.publish(message).promise();
+        console.log("Published completion message to SNS topic:", message);
+      }
 
       const updateParams = {
         TableName: tableName,
