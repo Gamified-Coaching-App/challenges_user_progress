@@ -2,6 +2,7 @@ import aws from 'aws-sdk';
 
 const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
+const sns = new aws.SNS();
 
 export async function handler(event) {
   // Validate the event structure
