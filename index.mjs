@@ -5,6 +5,12 @@ const documentClient = new DynamoDB.DocumentClient();
 const sns = new aws.SNS();
 
 export async function handler(event) {
+
+  if (event['detail-type'] !== 'activity_processed') {
+    console.log('Event is not an activity_processed event.');
+    return;
+}
+
   // Validate the event structure
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
     console.error('Invalid event structure:', event);
