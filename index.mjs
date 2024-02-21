@@ -63,7 +63,7 @@ export async function handler(event) {
       };
     }
 
-    // Iterate over challenges to update them
+    // iterate over challenges to update them
     for (const challenge of challenges) {
       const newMCompleted = challenge.completed_meters + distance;
       const isCompleted = newMCompleted >= challenge.target_meters;
