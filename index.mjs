@@ -113,7 +113,8 @@ async function sendCompletionDataToApi(userId, pointsEarned) {
   const dataString = JSON.stringify(completionData);
 
   const options = {
-      hostname: 'exbbbi6704.execute-api.eu-west-2.amazonaws.com',
+      // https://exbbbi6704.execute-api.eu-west-2.amazonaws.com/dev
+      hostname: 'ipo3rrju8j.execute-api.eu-west-2.amazonaws.com',
       port: 443,
       path: '/dev/points_earned',
       method: 'POST',
