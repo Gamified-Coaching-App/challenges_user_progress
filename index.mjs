@@ -1,4 +1,5 @@
 import aws from 'aws-sdk';
+import https from 'https';
 
 const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
@@ -68,28 +69,9 @@ export async function handler(event) {
       const isCompleted = newMCompleted >= challenge.target_meters;
       const newStatus = isCompleted ? "completed" : "current";
 
-      if (isCompleted) {
-        const completionData = {
-            userId: userId, // ID of the user who completed the challenge
-            pointsEarned: challenge.points, // Points earned from completing the challenge
-            newStatus: "completed" // Status of the challenge
-        };
-    
-        // SNS messages
-        const message = {
-            Message: JSON.stringify({
-                default: JSON.stringify(completionData),
-            }),
-            TopicArn: 'arn:aws:sns:eu-west-2:590183778243:ChallengeCompletionNotification',
-            MessageStructure: 'json', 
-        };
-    
-        try {
-          await sns.publish(message).promise();
-          console.log("Message published to SNS topic successfully.");
-        } catch (error) {
-          console.error("Error publishing message to SNS topic:", error);
-        }
+      if (isCompleted) {      
+      // const apiUrl = 'https://ipo3rrju8j.execute-api.eu-west-2.amazonaws.com/dev/points_earned';
+        sendCompletionDataToApi(userId, challenge.points);
       }
 
       const updateParams = {
@@ -120,5 +102,55 @@ export async function handler(event) {
       statusCode: 500,
       body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }),
     };
+  }
+}
+
+async function sendCompletionDataToApi(userId, pointsEarned) {
+  const completionData = {
+      userId: userId,
+      pointsEarned: pointsEarned
+  };
+
+  const dataString = JSON.stringify(completionData);
+
+  const options = {
+      hostname: 'ipo3rrju8j.execute-api.eu-west-2.amazonaws.com',
+      port: 443,
+      path: '/dev/points_earned',
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(dataString)
+      }
+  };
+
+  const promise = new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+          let responseBody = '';
+          
+          res.on('data', (chunk) => {
+              responseBody += chunk;
+          });
+
+          res.on('end', () => {
+              console.log("Response from API:", responseBody);
+              resolve(responseBody);
+          });
+      });
+
+      req.on('error', (error) => {
+          console.error("Error making API request:", error);
+          reject(error);
+      });
+
+      req.write(dataString);
+      req.end();
+  });
+
+  try {
+      const response = await promise;
+      console.log("API call successful:", response);
+  } catch (error) {
+      console.error("API call failed:", error);
   }
 }
