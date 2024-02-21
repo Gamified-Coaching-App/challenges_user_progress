@@ -50,7 +50,7 @@ export async function handler(event) {
   };
 
   try {
-    // Execute the query to find active challenges
+    // execute the query to find active challenges 
     const queryResult = await documentClient.query(queryParams).promise();
     const challenges = queryResult.Items;
 
@@ -70,7 +70,6 @@ export async function handler(event) {
       const newStatus = isCompleted ? "completed" : "current";
 
       if (isCompleted) {      
-      // const apiUrl = 'https://ipo3rrju8j.execute-api.eu-west-2.amazonaws.com/dev/points_earned';
         sendCompletionDataToApi(userId, challenge.points);
       }
 
@@ -114,7 +113,7 @@ async function sendCompletionDataToApi(userId, pointsEarned) {
   const dataString = JSON.stringify(completionData);
 
   const options = {
-      hostname: 'ipo3rrju8j.execute-api.eu-west-2.amazonaws.com',
+      hostname: 'exbbbi6704.execute-api.eu-west-2.amazonaws.com',
       port: 443,
       path: '/dev/points_earned',
       method: 'POST',
