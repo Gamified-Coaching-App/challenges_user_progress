@@ -30,7 +30,7 @@ export async function handler(event) {
   }
 }
 
-function validateAndExtractDetails(event) {
+export default function validateAndExtractDetails(event) {
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
     throw new Error("Invalid event structure. Must include event.detail with user_id and distance_in_meters.");
   }
