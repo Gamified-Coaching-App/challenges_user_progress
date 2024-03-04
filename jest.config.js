@@ -1,10 +1,14 @@
 module.exports = {
   transform: {
-    '^.+\\.[t|j]sx?$': 'babel-jest', // Transform both JS and JSX files
-    '^.+\\.mjs$': 'babel-jest' // Ensure .mjs files are also transformed
+    '^.+\\.m?js$': 'babel-jest', // Adjusted to include both .js and .mjs files
   },
   // Ensure Jest handles `.mjs` files
   moduleFileExtensions: ['js', 'json', 'jsx', 'node', 'mjs'],
+  transformIgnorePatterns: ['/node_modules/'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
+  testEnvironment: 'node',
   testMatch: [
     '**/__tests__/**/*.js?(x)',
     '**/?(*.)+(spec|test).js?(x)',

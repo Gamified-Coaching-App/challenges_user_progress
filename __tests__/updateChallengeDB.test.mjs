@@ -13,8 +13,8 @@ jest.mock('aws-sdk', () => {
         promise: promiseMock,
       })),
     },
-    updateMock, // Export for assertion
-    promiseMock, // Export for manipulation in tests
+    updateMock,
+    promiseMock, 
   };
 });
 
@@ -78,11 +78,10 @@ describe('updateChallengeDB', () => {
   
     expect(aws.promiseMock).toHaveBeenCalled();
   });
-  it('should correctly update multiple challenges', async () => {
-    // Define multiple challenges
+  it('should correctly update multiple challenges for the same user', async () => {
     const updates = [
       { userId: 'user1', challengeId: 'challenge1', newMCompleted: 300, newStatus: 'current' },
-      { userId: 'user2', challengeId: 'challenge2', newMCompleted: 800, newStatus: 'completed' },
+      { userId: 'user1', challengeId: 'challenge2', newMCompleted: 800, newStatus: 'completed' },
     ];
   
     // Call updateChallengeDB for each update
@@ -105,7 +104,9 @@ describe('updateChallengeDB', () => {
         },
       });
     });
+  
     // Ensure updateMock was called the correct number of times
     expect(aws.updateMock).toHaveBeenCalledTimes(updates.length);
   });
+  
 });

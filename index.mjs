@@ -63,21 +63,8 @@ export async function queryChallenges(userId, workoutTimeConverted) {
   return queryResult.Items;
 }
 
-export async function updateChallenges(userId, challenges, distance) {
-  for (const challenge of challenges) {
-    const newMCompleted = challenge.completed_meters + distance;
-    const isCompleted = newMCompleted >= challenge.target_meters;
-    const newStatus = isCompleted ? "completed" : "current";
-
-    if (isCompleted) {      
-      await sendCompletionDataToApi(userId, challenge.points);
-    }
-
-    await updateChallengeDB(userId, challenge.challenge_id, newMCompleted, newStatus);
-  }
-}
-
-export async function updateChallengeDB(userId, challengeId, newMCompleted, newStatus) {
+export async function updateChallengeDB (userId, challengeId, newMCompleted, newStatus) {
+  console.log('updateChallengeDB called'); 
   const updateParams = {
     TableName: "challenges",
     Key: { "user_id": userId, "challenge_id": challengeId },
@@ -94,7 +81,7 @@ export async function updateChallengeDB(userId, challengeId, newMCompleted, newS
   await documentClient.update(updateParams).promise();
 }
 
-export async function sendCompletionDataToApi(userId, pointsEarned) {
+export async function  sendCompletionDataToApi (userId, pointsEarned) {
   const completionData = {
       userId: userId,
       pointsEarned: pointsEarned
@@ -141,6 +128,20 @@ export async function sendCompletionDataToApi(userId, pointsEarned) {
       console.log("API call successful:", response);
   } catch (error) {
       console.error("API call failed:", error);
+  }
+}
+
+export async function  updateChallenges (userId, challenges, distance) {
+  for (const challenge of challenges) {
+    const newMCompleted = challenge.completed_meters + distance;
+    const isCompleted = newMCompleted >= challenge.target_meters;
+    const newStatus = isCompleted ? "completed" : "current";
+
+    if (isCompleted) {      
+      await sendCompletionDataToApi(userId, challenge.points);
+    }
+
+    await updateChallengeDB(userId, challenge.challenge_id, newMCompleted, newStatus);
   }
 }
 
