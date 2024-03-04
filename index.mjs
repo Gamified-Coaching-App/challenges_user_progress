@@ -63,7 +63,7 @@ export async function queryChallenges(userId, workoutTimeConverted) {
   return queryResult.Items;
 }
 
-async function updateChallenges(userId, challenges, distance) {
+export async function updateChallenges(userId, challenges, distance) {
   for (const challenge of challenges) {
     const newMCompleted = challenge.completed_meters + distance;
     const isCompleted = newMCompleted >= challenge.target_meters;
@@ -73,11 +73,11 @@ async function updateChallenges(userId, challenges, distance) {
       await sendCompletionDataToApi(userId, challenge.points);
     }
 
-    await updateChallenge(userId, challenge.challenge_id, newMCompleted, newStatus);
+    await updateChallengeDB(userId, challenge.challenge_id, newMCompleted, newStatus);
   }
 }
 
-async function updateChallenge(userId, challengeId, newMCompleted, newStatus) {
+export async function updateChallengeDB(userId, challengeId, newMCompleted, newStatus) {
   const updateParams = {
     TableName: "challenges",
     Key: { "user_id": userId, "challenge_id": challengeId },
@@ -94,7 +94,7 @@ async function updateChallenge(userId, challengeId, newMCompleted, newStatus) {
   await documentClient.update(updateParams).promise();
 }
 
-async function sendCompletionDataToApi(userId, pointsEarned) {
+export async function sendCompletionDataToApi(userId, pointsEarned) {
   const completionData = {
       userId: userId,
       pointsEarned: pointsEarned
@@ -144,7 +144,7 @@ async function sendCompletionDataToApi(userId, pointsEarned) {
   }
 }
 
-function createResponse(statusCode, body) {
+export function createResponse(statusCode, body) {
   return {
     statusCode: statusCode,
     body: JSON.stringify(body),
