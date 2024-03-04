@@ -33,7 +33,8 @@ jobs:
         run: npm test
 
       - name: Package Lambda function
-        run: zip -r lambda.zip . -x '*.git*
+        run: 
+          zip -r lambda.zip . -x '*.git*'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
