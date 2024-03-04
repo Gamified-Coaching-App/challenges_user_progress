@@ -3,7 +3,6 @@ import https from 'https';
 
 const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
-const sns = new aws.SNS();
 
 export async function handler(event) {
 
@@ -16,7 +15,12 @@ export async function handler(event) {
   }
 
   // Extract required details from the event
-  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTime, activity_type: activityType } = event.detail;
+  const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTimeSeconds, activity_type: activityType } = event.detail;
+
+
+  console.log(`The time submitted in seconds is ${workoutTimeSeconds}`);
+  const workoutTimeConverted = new Date(workoutTimeSeconds * 1000).toISOString();
+  console.log(`The time converted is ${workoutTimeConverted}`);
 
   if (activityType !== "RUNNING") {
     // Handle the case where the activity_type is not RUNNING, 
@@ -44,7 +48,7 @@ export async function handler(event) {
     ExpressionAttributeValues: {
       ":userIdValue": userId,
       ":currentStatus": "current",
-      ":workoutTime": workoutTime, // Assuming workoutTime is a timestamp or date
+      ":workoutTime": workoutTimeConverted, 
     },
     FilterExpression: "#status = :currentStatus AND #start_date <= :workoutTime AND #end_date >= :workoutTime",
   };
