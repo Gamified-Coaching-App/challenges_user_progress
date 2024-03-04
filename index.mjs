@@ -5,39 +5,45 @@ const { DynamoDB } = aws;
 const documentClient = new DynamoDB.DocumentClient();
 
 export async function handler(event) {
+  try {
+    const { userId, distance, workoutTimeConverted, activityType } = validateAndExtractDetails(event);
+    
+    if (activityType !== "RUNNING") {
+      console.log("The activity type is not RUNNING. Skipping...");
+      return createResponse(200, { message: "No operation performed as the activity type is not RUNNING." });
+    }
 
+    const challenges = await queryChallenges(userId, workoutTimeConverted);
+    
+    if (challenges.length === 0) {
+      console.log(`No current challenges found for user ${userId}`);
+      return createResponse(404, { message: "No current challenges found for the user." });
+    }
+
+    await updateChallenges(userId, challenges, distance);
+
+    console.log(`Successfully updated challenges for user ${userId}`);
+    return createResponse(200, { message: "Challenges updated successfully." });
+  } catch (error) {
+    console.error("Error processing event:", error);
+    return createResponse(500, { error: "Failed to process event due to an internal error." });
+  }
+}
+
+function validateAndExtractDetails(event) {
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
-    console.error('Invalid event structure:', event);
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Invalid event structure. Must include event.detail with user_id and distance_in_meters." }),
-    };
+    throw new Error("Invalid event structure. Must include event.detail with user_id and distance_in_meters.");
   }
 
-  // Extract required details from the event
   const { user_id: userId, distance_in_meters: distance, timestamp_local: workoutTimeSeconds, activity_type: activityType } = event.detail;
-
-
-  console.log(`The time submitted in seconds is ${workoutTimeSeconds}`);
   const workoutTimeConverted = new Date(workoutTimeSeconds * 1000).toISOString();
-  console.log(`The time converted is ${workoutTimeConverted}`);
 
-  if (activityType !== "RUNNING") {
-    // Handle the case where the activity_type is not RUNNING, 
-    // such as skipping the operation, logging a message, or returning a specific response
-    console.log("The activity type is not RUNNING. Skipping...");
-    return {
-      statusCode: 200, // Or another appropriate status code
-      body: JSON.stringify({ message: "No operation performed as the activity type is not RUNNING." }),
-    };
-  }
+  return { userId, distance, workoutTimeConverted, activityType };
+}
 
-  const tableName = "challenges";
-
-  // Define query parameters to find active challenges for the user
+async function queryChallenges(userId, workoutTimeConverted) {
   const queryParams = {
-    TableName: tableName,
-    // can only be used with the table's primary key attributes
+    TableName: "challenges",
     KeyConditionExpression: "#user_id = :userIdValue",
     ExpressionAttributeNames: {
       "#user_id": "user_id",
@@ -53,59 +59,39 @@ export async function handler(event) {
     FilterExpression: "#status = :currentStatus AND #start_date <= :workoutTime AND #end_date >= :workoutTime",
   };
 
-  try {
-    // execute the query to find active challenges 
-    const queryResult = await documentClient.query(queryParams).promise();
-    const challenges = queryResult.Items;
+  const queryResult = await documentClient.query(queryParams).promise();
+  return queryResult.Items;
+}
 
-    // Handle case with no current challenges found
-    if (challenges.length === 0) {
-      console.log(`No current challenges found for user ${userId}`);
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ message: "No current challenges found for the user." }),
-      };
+async function updateChallenges(userId, challenges, distance) {
+  for (const challenge of challenges) {
+    const newMCompleted = challenge.completed_meters + distance;
+    const isCompleted = newMCompleted >= challenge.target_meters;
+    const newStatus = isCompleted ? "completed" : "current";
+
+    if (isCompleted) {      
+      await sendCompletionDataToApi(userId, challenge.points);
     }
 
-    // iterate over challenges to update them
-    for (const challenge of challenges) {
-      const newMCompleted = challenge.completed_meters + distance;
-      const isCompleted = newMCompleted >= challenge.target_meters;
-      const newStatus = isCompleted ? "completed" : "current";
-
-      if (isCompleted) {      
-        sendCompletionDataToApi(userId, challenge.points);
-      }
-
-      const updateParams = {
-        TableName: tableName,
-        Key: { "user_id": userId, "challenge_id": challenge.challenge_id },
-        UpdateExpression: "SET completed_meters = :newMCompleted, #status = :newStatus",
-        ExpressionAttributeValues: {
-          ":newMCompleted": newMCompleted,
-          ":newStatus": newStatus,
-        },
-        ExpressionAttributeNames: {
-          "#status": "status",
-        },
-      };
-
-      // Execute update operation
-      await documentClient.update(updateParams).promise();
-    }
-
-    console.log(`Successfully updated challenges for user ${userId}`);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "Challenges updated successfully." }),
-    };
-  } catch (error) {
-    console.error("Error updating challenges for user:", userId, error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Failed to update challenges due to an internal error." }),
-    };
+    await updateChallenge(userId, challenge.challenge_id, newMCompleted, newStatus);
   }
+}
+
+async function updateChallenge(userId, challengeId, newMCompleted, newStatus) {
+  const updateParams = {
+    TableName: "challenges",
+    Key: { "user_id": userId, "challenge_id": challengeId },
+    UpdateExpression: "SET completed_meters = :newMCompleted, #status = :newStatus",
+    ExpressionAttributeValues: {
+      ":newMCompleted": newMCompleted,
+      ":newStatus": newStatus,
+    },
+    ExpressionAttributeNames: {
+      "#status": "status",
+    },
+  };
+
+  await documentClient.update(updateParams).promise();
 }
 
 async function sendCompletionDataToApi(userId, pointsEarned) {
@@ -157,4 +143,11 @@ async function sendCompletionDataToApi(userId, pointsEarned) {
   } catch (error) {
       console.error("API call failed:", error);
   }
+}
+
+function createResponse(statusCode, body) {
+  return {
+    statusCode: statusCode,
+    body: JSON.stringify(body),
+  };
 }
