@@ -30,7 +30,7 @@ export async function handler(event) {
   }
 }
 
-export default function validateAndExtractDetails(event) {
+export function validateAndExtractDetails(event) {
   if (!event.detail || typeof event.detail.user_id === 'undefined' || typeof event.detail.distance_in_meters === 'undefined') {
     throw new Error("Invalid event structure. Must include event.detail with user_id and distance_in_meters.");
   }
@@ -41,7 +41,7 @@ export default function validateAndExtractDetails(event) {
   return { userId, distance, workoutTimeConverted, activityType };
 }
 
-async function queryChallenges(userId, workoutTimeConverted) {
+export async function queryChallenges(userId, workoutTimeConverted) {
   const queryParams = {
     TableName: "challenges",
     KeyConditionExpression: "#user_id = :userIdValue",
@@ -103,7 +103,6 @@ async function sendCompletionDataToApi(userId, pointsEarned) {
   const dataString = JSON.stringify(completionData);
 
   const options = {
-      // https://exbbbi6704.execute-api.eu-west-2.amazonaws.com/dev
       hostname: 'ipo3rrju8j.execute-api.eu-west-2.amazonaws.com',
       port: 443,
       path: '/dev/points_earned',

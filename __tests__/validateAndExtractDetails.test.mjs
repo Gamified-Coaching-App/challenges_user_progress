@@ -1,8 +1,9 @@
-import validateAndExtractDetails from '../index.mjs';
+import {validateAndExtractDetails} from '../index.mjs';
 
 describe('validateAndExtractDetails', () => {
   it('should correctly convert timestamp from seconds to ISO string format', () => {
-    const timestampInSeconds = 1609459200; // This represents a specific moment, e.g., 2021-01-01T00:00:00Z
+    // testing the conversion from seconds to ISO string format that should be returned
+    const timestampInSeconds = 1609459200; // represents a specific moment (2021-01-01T00:00:00Z)
     const expectedISODateTime = "2021-01-01T00:00:00.000Z";
 
     const mockEvent = {
@@ -20,7 +21,6 @@ describe('validateAndExtractDetails', () => {
   });
 
   it('should extract details correctly from a valid event', () => {
-    // Define your mock event with appropriate data for validation
     const mockEvent = {
       detail: {
         user_id: '123',
@@ -37,6 +37,5 @@ describe('validateAndExtractDetails', () => {
     expect(extractedDetails.userId).toBe('123');
     expect(extractedDetails.distance).toBe(1000);
     expect(extractedDetails.activityType).toBe('RUNNING');
-    // Add more assertions as needed
   });
 });
