@@ -1,11 +1,12 @@
 // Import statements
 import aws from 'aws-sdk';
-import { updateChallengeDB } from '../index.mjs';
+import { updateChallengeDB } from '../utils.mjs';
 
 // Mock the AWS SDK
 jest.mock('aws-sdk', () => {
-  const updateMock = jest.fn().mockReturnThis(); // Allow chaining by returning 'this'
-  const promiseMock = jest.fn(); // For mocking the promise() method
+  // Mock the update method
+  const updateMock = jest.fn().mockReturnThis(); 
+  const promiseMock = jest.fn(); 
   return {
     DynamoDB: {
       DocumentClient: jest.fn(() => ({

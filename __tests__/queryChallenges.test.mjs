@@ -1,5 +1,5 @@
 import aws from 'aws-sdk';
-import {queryChallenges} from '../index.mjs';
+import {queryChallenges} from '../utils.mjs';
 
 // Resetting modules to ensure a clean mock state
 beforeEach(() => {
@@ -9,6 +9,7 @@ beforeEach(() => {
 
 // Mock the entire AWS SDK
 jest.mock('aws-sdk', () => {
+  // Mock the query method
   const queryMock = jest.fn();
   return {
     DynamoDB: {

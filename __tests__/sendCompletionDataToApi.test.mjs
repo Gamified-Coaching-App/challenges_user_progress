@@ -1,4 +1,4 @@
-import { sendCompletionDataToApi } from '../index.mjs';
+import { sendCompletionDataToApi } from '../utils.mjs';
 import https from 'https';
 console.log(sendCompletionDataToApi);
 

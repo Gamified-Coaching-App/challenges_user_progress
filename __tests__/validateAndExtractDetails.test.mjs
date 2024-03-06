@@ -1,4 +1,4 @@
-import {validateAndExtractDetails} from '../index.mjs';
+import {validateAndExtractDetails} from '../utils.mjs';
 
 describe('validateAndExtractDetails', () => {
   it('should correctly convert timestamp from seconds to ISO string format', () => {
