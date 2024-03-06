@@ -1,8 +1,8 @@
 import { handler } from '../index.mjs';
-import * as utils from './utils.mjs';
+import * as utils from '../utils.mjs';
 
 // Mock the utils module
-jest.mock('./utils.mjs', () => ({
+jest.mock('../utils.mjs', () => ({
   validateAndExtractDetails: jest.fn(),
   queryChallenges: jest.fn(),
   createResponse: jest.fn().mockImplementation((statusCode, body) => ({ statusCode, body: JSON.stringify(body) })),
