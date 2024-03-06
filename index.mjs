@@ -17,7 +17,7 @@ export async function handler(event) {
     
     if (challenges.length === 0) {
       console.log(`No current challenges found for user ${userId}`);
-      return createResponse(404, { message: "No current challenges found for the user." });
+      return createResponse(200, { message: "No current challenges found for the user." });
     }
 
     await updateChallenges(userId, challenges, distance);
@@ -65,11 +65,11 @@ export async function queryChallenges(userId, workoutTimeConverted) {
 
 export async function updateChallenges(userId, challenges, distance) {
   for (const challenge of challenges) {
-    const newMCompleted = challenge.completed_meters + distance;
+    const newMCompleted = Math.min(challenge.completed_meters + distance, challenge.target_meters);
     const isCompleted = newMCompleted >= challenge.target_meters;
     const newStatus = isCompleted ? "completed" : "current";
 
-    if (isCompleted) {      
+    if (isCompleted) { 
       await sendCompletionDataToApi(userId, challenge.points);
     }
 
