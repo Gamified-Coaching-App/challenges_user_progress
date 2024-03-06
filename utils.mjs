@@ -45,12 +45,14 @@ export function validateAndExtractDetails(event) {
       const newStatus = isCompleted ? "completed" : "current";
   
       if (isCompleted) { 
-        await sendCompletionDataToApi(userId, challenge.points);
+        const roundedPoints = Math.round(challenge.points); // Round points to nearest integer
+        await sendCompletionDataToApi(userId, roundedPoints);
       }
   
       await updateChallengeDB(userId, challenge.challenge_id, newMCompleted, newStatus);
     }
   }
+  
   
   export async function updateChallengeDB(userId, challengeId, newMCompleted, newStatus) {
     const updateParams = {
